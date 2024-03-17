@@ -85,7 +85,7 @@ const ExploreHeader = ({ onCategoryChanged }: Props) => {
             gap: 20,
             paddingHorizontal: 16,
           }}>
-          {categories.map((item, index) => (
+          {/* {categories.map((item, index) => (
             <TouchableOpacity
               ref={(el) => (itemsRef.current[index] = el)}
               key={index}
@@ -100,7 +100,7 @@ const ExploreHeader = ({ onCategoryChanged }: Props) => {
                 {item.name}
               </Text>
             </TouchableOpacity>
-          ))}
+          ))} */}
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -110,7 +110,7 @@ const ExploreHeader = ({ onCategoryChanged }: Props) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
-    height: 130,
+    height: 85,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.1,
