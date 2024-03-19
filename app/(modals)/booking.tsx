@@ -135,7 +135,7 @@ const Page = () => {
               today={new Date()}
               startDate={today.toString().split('T')[0]}
               untilDate={today.toString().split('T')[0]}
-              onConfirm={(startDate: string, untilDate: string) => this.setState({ startDate, untilDate })}
+              onConfirm={(startDate: Date, endDate: Date) => setSelectedDateRange({ startDate, endDate })}
               color={'#007A22'}
               showClose={false}
               showReset={false}

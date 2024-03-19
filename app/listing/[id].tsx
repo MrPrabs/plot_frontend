@@ -1,237 +1,247 @@
-import { useLocalSearchParams, useNavigation } from 'expo-router';
-import React, { useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Share } from 'react-native';
-import listingsData from '@/assets/data/airbnb-listings.json';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import MapView from 'react-native-maps'; // You'll need to install 'react-native-maps'
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '@/constants/Colors';
-import Animated, {
-  SlideInDown,
-  interpolate,
-  useAnimatedRef,
-  useAnimatedStyle,
-  useScrollViewOffset,
-} from 'react-native-reanimated';
-import { defaultStyles } from '@/constants/Styles';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
+import axios from 'axios';
 
-const { width } = Dimensions.get('window');
-const IMG_HEIGHT = 300;
+type photo = string;
+type UserType = string;
+type ReservationStatus = string;
+type SpotAvailability = string;
+type SubleaseAgreement = string;
+type Message = string;
+
+
+interface User {
+  user_id: number;
+  username: string;
+  email: string;
+  password_hash: string;
+  profile_picture?: string | null;
+  user_type: UserType; // Assuming UserType is an enum or defined elsewhere
+  ownedLots: ParkingLot[]; // Array of ParkingLot objects
+  reservations: Reservation[]; // Array of Reservation objects
+  sentMessages: Message[]; // Array of Message objects where the user is the sender
+  receivedMessages: Message[]; // Array of Message objects where the user is the receiver
+  originalLeases: SubleaseAgreement[]; // Array of SubleaseAgreement objects where the user is the original leaser
+  subLeases: SubleaseAgreement[]; // Array of SubleaseAgreement objects where the user is the sub leaser
+  reviews: Review[]; // Array of Review objects associated with the user
+}
+
+interface Reservation {
+  reservation_id: number;
+  spot_id: number;
+  user_id: number;
+  start_time: Date;
+  end_time: Date;
+  status: ReservationStatus; // Assuming ReservationStatus is an enum or defined elsewhere
+  parkingSpot: ParkingSpot; // Referencing ParkingSpot object
+  user: User; // Referencing User object
+  availability_id?: number | null;
+  spotAvailability?: SpotAvailability | null; // Referencing SpotAvailability object
+}
+
+
+interface ParkingSpot {
+  lot_id: number;
+  name: string;
+  address: string;
+  description: string;
+  latitude: number;
+  longitude: number;
+  total_spots: number;
+  spot_numbering: boolean;
+  owner_id: number;
+  price: GLfloat;
+}
+
+interface Review {
+  review_id: number;
+  lot_id: number;
+  user_id: number;
+  rating: number;
+  comment?: string | null;
+  created_at: Date;
+  parkingLot: ParkingLot;
+  user: User;
+}
+
+interface ParkingLot {
+  lot_id: number;
+  name: string;
+  address: string;
+  description?: string; // The question mark denotes that this field is optional
+  latitude: number;
+  longitude: number;
+  total_spots: number;
+  spot_numbering: boolean;
+  owner_id: number;
+  owner: string; // Assuming you want to include the related user data
+  parkingSpots: ParkingSpot[]; // Assuming you want to include the related parking spots data
+  reviews?: Review[]; // Assuming you want to include the related reviews data
+  photos?: photo[]; // Assuming you want to include the related photos data
+}
+
+
+
 
 const DetailsPage = () => {
-  const { id } = useLocalSearchParams();
-  const listing = (listingsData as any[]).find((item) => item.id === id);
+  
   const navigation = useNavigation();
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const { width } = Dimensions.get('window');
 
-  const shareListing = async () => {
-    try {
-      await Share.share({
-        title: listing.name,
-        url: listing.listing_url,
-      });
-    } catch (err) {
-      console.log(err);
-    }
-  };
+  const { id } = useLocalSearchParams();
+  const [Lot, setLot] = useState<ParkingLot>();
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerTitle: '',
-      headerTransparent: true,
-
-      headerBackground: () => (
-        <Animated.View style={[headerAnimatedStyle, styles.header]}></Animated.View>
-      ),
-      headerRight: () => (
-        <View style={styles.bar}>
-          <TouchableOpacity style={styles.roundButton} onPress={shareListing}>
-            <Ionicons name="share-outline" size={22} color={'#000'} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.roundButton}>
-            <Ionicons name="heart-outline" size={22} color={'#000'} />
-          </TouchableOpacity>
-        </View>
-      ),
-      headerLeft: () => (
-        <TouchableOpacity style={styles.roundButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="chevron-back" size={24} color={'#000'} />
-        </TouchableOpacity>
-      ),
-    });
-  }, []);
-
-  const scrollOffset = useScrollViewOffset(scrollRef);
-
-  const imageAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          translateY: interpolate(
-            scrollOffset.value,
-            [-IMG_HEIGHT, 0, IMG_HEIGHT, IMG_HEIGHT],
-            [-IMG_HEIGHT / 2, 0, IMG_HEIGHT * 0.75]
-          ),
-        },
-        {
-          scale: interpolate(scrollOffset.value, [-IMG_HEIGHT, 0, IMG_HEIGHT], [2, 1, 1]),
-        },
-      ],
-    };
+  const [lowestPriceSpot, setLowestPriceSpot] = useState<ParkingSpot | null>(null);
+  const [spots, setSpots] = useState<ParkingSpot[]>([]);
+  useEffect(() => {
+    // Replace this with the correct API call to fetch details based on the ID
+    axios.get(`http://192.168.1.80:3000/parkingLots/${id}`)
+      .then((response) => setLot(response.data))
+      .catch((error) => console.error('Failed to fetch Lot', error));
+      setSpots(Lot?.parkingLot?.parkingSpots ?? []);
+  }, [id]);
+  
+  
+  useEffect(() => {
+    console.log('LOTTTttttttt', Lot);
   });
 
-  const headerAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(scrollOffset.value, [0, IMG_HEIGHT / 1.5], [0, 1]),
-    };
-  }, []);
+
+
+
+
+    
+
+  useEffect(() => {
+    console.log('spots', spots);
+    setLowestPriceSpot(findLowestPriceSpot());
+  } , [spots]);
+
+  // Find the spot with the lowest price
+  const findLowestPriceSpot = () => {
+    if (spots.length === 0) {
+      return null;
+    }
+
+    let lowestPrice = spots[0].price;
+    let lowestPriceSpot = spots[0];
+
+    for (let i = 1; i < spots.length; i++) {
+      if (spots[i].price < lowestPrice) {
+        lowestPrice = spots[i].price;
+        lowestPriceSpot = spots[i];
+      }
+    }
+
+    return lowestPriceSpot;
+  };
+
+  const handleReserve = () => {
+    // Implement reservation logic or navigation to reservation screen
+  };
 
   return (
-    <View style={styles.container}>
-      <Animated.ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
-        ref={scrollRef}
-        scrollEventThrottle={16}>
-        <Animated.Image
-          source={{ uri: listing.xl_picture_url }}
-          style={[styles.image, imageAnimatedStyle]}
-          resizeMode="cover"
-        />
+    <ScrollView style={styles.container}>
+      <View style={styles.imageGallery}>
+        {/* Implement image gallery swiping logic */}
+        {Lot?.photos?.map((photo: string, index: number) => (
+          <Image key={index} source={{ uri: photo }} style={styles.image} />
+        ))}
+      </View>
 
-        <View style={styles.infoContainer}>
-          <Text style={styles.name}>{listing.name}</Text>
-          <Text style={styles.location}>
-            {listing.room_type} in {listing.smart_location}
-          </Text>
-          <Text style={styles.rooms}>
-            {listing.guests_included} guests · {listing.bedrooms} bedrooms · {listing.beds} bed ·{' '}
-            {listing.bathrooms} bathrooms
-          </Text>
-          <View style={{ flexDirection: 'row', gap: 4 }}>
-            <Ionicons name="star" size={16} />
-            <Text style={styles.ratings}>
-              {listing.review_scores_rating / 20} · {listing.number_of_reviews} reviews
-            </Text>
-          </View>
-          <View style={styles.divider} />
+      <Text style={styles.address}>{Lot?.address}</Text>
+      <Text style={styles.rating}>{Lot?.reviews?.[0]?.rating} ★</Text>
+      <Text style={styles.management}>{Lot?.owner}</Text>
 
-          <View style={styles.hostView}>
-            <Image source={{ uri: listing.host_picture_url }} style={styles.host} />
+      {/* Map Preview */}
+      <MapView
+        style={styles.map}
+        initialRegion={{
+          latitude: Lot?.latitude ?? 0,
+          longitude: Lot?.longitude ?? 0,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+        scrollEnabled={false}
+        zoomEnabled={false}
+      >
+        {/* Marker */}
+        {/* <MapView.Marker
+          coordinate={{
+            latitude: Lot?.latitude,
+            longitude: Lot?.longitude,
+          }}
+        /> */}
+      </MapView>
 
-            <View>
-              <Text style={{ fontWeight: '500', fontSize: 16 }}>Hosted by {listing.host_name}</Text>
-              <Text>Host since {listing.host_since}</Text>
-            </View>
-          </View>
+      <View style={styles.priceContainer}>
+        <Text style={styles.price}>${findLowestPriceSpot()?.price}/day</Text>
+        <Text style={styles.dateRange}>{"March 18"} - {"March 31"}</Text>
+      </View>
 
-          <View style={styles.divider} />
-
-          <Text style={styles.description}>{listing.description}</Text>
-        </View>
-      </Animated.ScrollView>
-
-      <Animated.View style={defaultStyles.footer} entering={SlideInDown.delay(200)}>
-        <View
-          style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <TouchableOpacity style={styles.footerText}>
-            <Text style={styles.footerPrice}>€{listing.price}</Text>
-            <Text>night</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[defaultStyles.btn, { paddingRight: 20, paddingLeft: 20 }]}>
-            <Text style={defaultStyles.btnText}>Reserve</Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-    </View>
+      <TouchableOpacity style={styles.reserveButton} onPress={handleReserve}>
+        <Text style={styles.reserveButtonText}>Reserve</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 };
+export default DetailsPage;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'white',
+  },
+  imageGallery: {
+    height: 1, // Set the height of the image gallery
   },
   image: {
-    height: IMG_HEIGHT,
-    width: width,
+    width: 400,
+    height: 1,
+    resizeMode: 'cover',
   },
-  infoContainer: {
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  name: {
-    fontSize: 26,
+  address: {
+    fontSize: 24,
     fontWeight: 'bold',
-    fontFamily: 'mon-sb',
+    margin: 10,
   },
-  location: {
+  rating: {
+    fontSize: 20,
+    margin: 10,
+  },
+  management: {
+    fontSize: 16,
+    margin: 10,
+  },
+  map: {
+    width: 400,
+    height: 200,
+    marginVertical: 10,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 10,
+  },
+  price: {
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  dateRange: {
     fontSize: 18,
-    marginTop: 10,
-    fontFamily: 'mon-sb',
   },
-  rooms: {
-    fontSize: 16,
-    color: Colors.grey,
-    marginVertical: 4,
-    fontFamily: 'mon',
-  },
-  ratings: {
-    fontSize: 16,
-    fontFamily: 'mon-sb',
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.grey,
-    marginVertical: 16,
-  },
-  host: {
-    width: 50,
-    height: 50,
-    borderRadius: 50,
-    backgroundColor: Colors.grey,
-  },
-  hostView: {
-    flexDirection: 'row',
+  reserveButton: {
+    backgroundColor: '#007A22',
+    margin: 10,
+    padding: 15,
     alignItems: 'center',
-    gap: 12,
+    borderRadius: 5,
   },
-  footerText: {
-    height: '100%',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  footerPrice: {
-    fontSize: 18,
-    fontFamily: 'mon-sb',
-  },
-  roundButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 50,
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: Colors.primary,
-  },
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  header: {
-    backgroundColor: '#fff',
-    height: 100,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.grey,
-  },
-
-  description: {
-    fontSize: 16,
-    marginTop: 10,
-    fontFamily: 'mon',
+  reserveButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });
-
-export default DetailsPage;
